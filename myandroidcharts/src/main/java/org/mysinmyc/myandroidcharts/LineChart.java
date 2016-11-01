@@ -60,10 +60,10 @@ public class LineChart extends View {
     static class DrawChartContext  {
         Canvas canvas;
         float dataLimits[];
-        float marginLeft=0;
-        float marginRight=0;
-        float marginTop=0;
-        float marginBottom=0;
+        float marginLeft=10;
+        float marginRight=10;
+        float marginTop=10;
+        float marginBottom=100;
 
         float scaleX;
         float scaleY;
@@ -76,19 +76,19 @@ public class LineChart extends View {
         }
 
         public float getPointForValueX(float pValueX) {
-            return marginLeft+(pValueX-dataLimits[0])*scaleX+1;
+            return marginLeft+(pValueX-dataLimits[0])*scaleX;
         }
 
         public float getValueForPointX(float pPointX) {
-            return (pPointX-1-marginLeft)/scaleX+dataLimits[0];
+            return (pPointX-marginLeft)/scaleX+dataLimits[0];
         }
 
         public float getPointForValueY(float pValueY) {
-            return canvas.getHeight()+marginTop-(pValueY-dataLimits[1])*scaleY-1;
+            return canvas.getHeight()-marginBottom-(pValueY-dataLimits[1])*scaleY;
         }
 
         public float getValueForPointY(float pValueY) {
-            return (canvas.getHeight()+marginTop-1-pValueY)/scaleY+dataLimits[1];
+            return (canvas.getHeight()-marginBottom-pValueY)/scaleY+dataLimits[1];
         }
     }
 
@@ -146,15 +146,16 @@ public class LineChart extends View {
                 float vCurX = pContext.getPointForValueX(vCurSeries.getAxisX().getItemAt(vCntPoints));
                 float vCurY =  pContext.getPointForValueY(vCurSeries.getAxisY().getItemAt(vCntPoints));
 
-                if (vCntPoints==0) {
-                    vCurPath.moveTo(vCurX,vCurY);
-                } else {
+                if (vCntPoints>0) {
                     vCurPath.lineTo(vCurX,vCurY);
                 }
+
+                vCurPath.addCircle(vCurX,vCurY,10, Path.Direction.CW);
+                vCurPath.moveTo(vCurX,vCurY);
             }
 
             Paint vCurPaint =new Paint();
-            vCurPaint.setStyle(Paint.Style.STROKE);
+            vCurPaint.setStyle(Paint.Style.FILL_AND_STROKE);
             vCurPaint.setStrokeWidth(4);
             vCurPaint.setColor(_Colors.get(vCntSeries));
             pContext.canvas.drawPath(vCurPath,vCurPaint);
@@ -172,10 +173,10 @@ public class LineChart extends View {
         vCurPaint.setColor(Color.DKGRAY);
 
         float vAxisX=pContext.getPointForValueY(pContext.dataLimits[1] < 0 ? 0:pContext.dataLimits[1]);
-        pContext.canvas.drawLine(0,vAxisX,pContext.canvas.getWidth(),vAxisX,vCurPaint);
+        pContext.canvas.drawLine(pContext.marginLeft,vAxisX,pContext.canvas.getWidth()-pContext.marginRight,vAxisX,vCurPaint);
 
         float vAxisY=pContext.getPointForValueX(pContext.dataLimits[0] < 0 ? 0:pContext.dataLimits[0]);
-        pContext.canvas.drawLine(vAxisY,0,vAxisY,pContext.canvas.getHeight(),vCurPaint);
+        pContext.canvas.drawLine(vAxisY,pContext.marginTop,vAxisY,pContext.canvas.getHeight()-pContext.marginBottom,vCurPaint);
     }
 
 
@@ -197,39 +198,45 @@ public class LineChart extends View {
 
         Paint vCurPaint = new Paint();
         vCurPaint.setStyle(Paint.Style.STROKE);
-        vCurPaint.setStrokeWidth(1);
+        vCurPaint.setStrokeWidth(2);
         vCurPaint.setColor(Color.LTGRAY);
         vCurPaint.setTextSize(16);
-        float vXSize = pContext.canvas.getWidth() / vXLines;
-        float vXoffset = pContext.getPointForValueX(0) % vXSize;
+
+        float vXSize = (pContext.canvas.getWidth() - pContext.marginLeft-pContext.marginRight) / vXLines;
         for (int vCntX = 0; vCntX < vXLines; vCntX++) {
 
-            float vCurX= vXSize * vCntX+vXoffset;
-            pContext.canvas.drawLine(vCurX, 0, vCurX, pContext.canvas.getHeight(), vCurPaint);
+            float vCurPointX= pContext.marginLeft+vCntX*vXSize;
+            float vCurValueX=pContext.getValueForPointX(vCurPointX);
 
-            float vCurValueX=pContext.getValueForPointX(vCurX);
+            pContext.canvas.drawLine(vCurPointX, pContext.marginTop, vCurPointX, pContext.canvas.getHeight()-pContext.marginBottom, vCurPaint);
+
+
             pContext.canvas.drawText(
                     _AxisXDataLabelFunction == null
                             ? "" + Math.round(vCurValueX)
                             : _AxisXDataLabelFunction.getLabelFor(vCurValueX)
                     ,
-                    vCurX + 6, pContext.getPointForValueY(0) + vCurPaint.getTextSize() + 2, vCurPaint);
+                    vCurPointX + 6,( pContext.dataLimits[1] < 0
+                            ? pContext.getPointForValueY(0)+26:
+                            pContext.canvas.getHeight()+-pContext.marginBottom+26), vCurPaint);
         }
-        float vYSize = pContext.canvas.getHeight() / vYLines;
-        float vYoffset = pContext.getPointForValueY(0) % vYSize;
+
+        float vYSize = (pContext.canvas.getHeight() - pContext.marginTop-pContext.marginBottom) / vYLines;
         for (int vCntY = 0; vCntY < vYLines; vCntY++) {
 
-            float vCurY=vYSize*vCntY+vYoffset;
-            pContext.canvas.drawLine(0,vCurY, pContext.canvas.getWidth(),vCurY, vCurPaint);
+            float vCurPointY= pContext.marginLeft+vCntY+vYSize*vCntY;
+            float vCurValueY=pContext.getValueForPointY(vCurPointY);
 
-            float vCurValueY=pContext.getValueForPointY(vCurY);
+            pContext.canvas.drawLine(pContext.marginLeft,vCurPointY, pContext.canvas.getWidth()-pContext.marginRight,vCurPointY, vCurPaint);
+
+
             if (Math.round(vCurValueY)!=0) {
                 pContext.canvas.drawText(
                         _AxisYDataLabelFunction == null
                                 ? "" + Math.round(vCurValueY)
                                 : _AxisYDataLabelFunction.getLabelFor(vCurValueY)
                         ,
-                        pContext.getPointForValueX(0) + 6, vCurY + vCurPaint.getTextSize() + 2, vCurPaint);
+                        ( pContext.dataLimits[0] < 0? pContext.getPointForValueX(0):0+pContext.marginLeft) + 6, pContext.marginTop+vCurPointY+10, vCurPaint);
             }
         }
 
