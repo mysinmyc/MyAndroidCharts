@@ -6,5 +6,5 @@ package org.mysinmyc.myandroidcharts.data;
 
 public interface DataLabel {
 
-    public String getLabelFor(Double pValue);
+    public String getLabelFor(float pValue);
 }

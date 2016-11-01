@@ -3,8 +3,10 @@ package org.mysinmyc.myandroidchartsapp;
 import android.graphics.Color;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.MotionEvent;
 
 import org.mysinmyc.myandroidcharts.LineChart;
+import org.mysinmyc.myandroidcharts.data.DataLabel;
 import org.mysinmyc.myandroidcharts.data.DataSet2D;
 
 public class LineChartActivity extends AppCompatActivity {
@@ -31,5 +33,14 @@ public class LineChartActivity extends AppCompatActivity {
             vData2.add(vCnt,0f+vCnt);
         }
         vLineChart.addDataSerie(Color.RED,"miao",vData2);
+
+        vLineChart.setAxisXDataLabelFunction(new DataLabel() {
+            @Override
+            public String getLabelFor(float pValue) {
+                return " [ valore di "+Math.round(pValue)+"] ";
+            }
+        });
     }
+
+
 }

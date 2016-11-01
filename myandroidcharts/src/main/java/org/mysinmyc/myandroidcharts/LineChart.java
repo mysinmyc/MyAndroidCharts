@@ -88,7 +88,7 @@ public class LineChart extends View {
         }
 
         public float getValueForPointY(float pValueY) {
-            return (pValueY+1-canvas.getHeight()-marginTop)/scaleY+dataLimits[1];
+            return (canvas.getHeight()+marginTop-1-pValueY)/scaleY+dataLimits[1];
         }
     }
 
@@ -178,6 +178,9 @@ public class LineChart extends View {
         pContext.canvas.drawLine(vAxisY,0,vAxisY,pContext.canvas.getHeight(),vCurPaint);
     }
 
+
+
+
     protected void drawGrid(DrawChartContext pContext) {
 
 
@@ -196,7 +199,7 @@ public class LineChart extends View {
         vCurPaint.setStyle(Paint.Style.STROKE);
         vCurPaint.setStrokeWidth(1);
         vCurPaint.setColor(Color.LTGRAY);
-        vCurPaint.setTextSize(12);
+        vCurPaint.setTextSize(16);
         float vXSize = pContext.canvas.getWidth() / vXLines;
         float vXoffset = pContext.getPointForValueX(0) % vXSize;
         for (int vCntX = 0; vCntX < vXLines; vCntX++) {
@@ -204,8 +207,13 @@ public class LineChart extends View {
             float vCurX= vXSize * vCntX+vXoffset;
             pContext.canvas.drawLine(vCurX, 0, vCurX, pContext.canvas.getHeight(), vCurPaint);
 
-            pContext.canvas.drawText("" + Math.round(pContext.getValueForPointX(vCurX)),
-                    vCurX+6, pContext.getPointForValueY(0)+14, vCurPaint);
+            float vCurValueX=pContext.getValueForPointX(vCurX);
+            pContext.canvas.drawText(
+                    _AxisXDataLabelFunction == null
+                            ? "" + Math.round(vCurValueX)
+                            : _AxisXDataLabelFunction.getLabelFor(vCurValueX)
+                    ,
+                    vCurX + 6, pContext.getPointForValueY(0) + vCurPaint.getTextSize() + 2, vCurPaint);
         }
         float vYSize = pContext.canvas.getHeight() / vYLines;
         float vYoffset = pContext.getPointForValueY(0) % vYSize;
@@ -214,15 +222,31 @@ public class LineChart extends View {
             float vCurY=vYSize*vCntY+vYoffset;
             pContext.canvas.drawLine(0,vCurY, pContext.canvas.getWidth(),vCurY, vCurPaint);
 
-
-            pContext.canvas.drawText("" + Math.round(pContext.getValueForPointY(vCurY)),
-                    pContext.getPointForValueX(0)+6, vCurY +14, vCurPaint);
+            float vCurValueY=pContext.getValueForPointY(vCurY);
+            if (Math.round(vCurValueY)!=0) {
+                pContext.canvas.drawText(
+                        _AxisYDataLabelFunction == null
+                                ? "" + Math.round(vCurValueY)
+                                : _AxisYDataLabelFunction.getLabelFor(vCurValueY)
+                        ,
+                        pContext.getPointForValueX(0) + 6, vCurY + vCurPaint.getTextSize() + 2, vCurPaint);
+            }
         }
 
     }
 
+    float _SelectedX=Float.NaN;
+    float _SelectedY=Float.NaN;
     @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        return super.onTouchEvent(event);
+    public boolean onTouchEvent(MotionEvent pEvent) {
+
+        _SelectedX = pEvent.getX();
+        _SelectedY = pEvent.getY();
+
+        invalidate();
+        return true;
+
     }
+
+
 }
