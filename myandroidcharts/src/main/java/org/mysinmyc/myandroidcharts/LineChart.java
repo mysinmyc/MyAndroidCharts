@@ -1,5 +1,6 @@
 package org.mysinmyc.myandroidcharts;
 
+import android.app.Application;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -7,22 +8,24 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
+import android.view.ScaleGestureDetector.OnScaleGestureListener;
 import android.view.View;
 
 import org.mysinmyc.myandroidcharts.data.DataLabel;
 import org.mysinmyc.myandroidcharts.data.DataSet2D;
+import org.mysinmyc.myandroidcharts.utils.TouchEventHelper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Created by ace on 31/10/2016.
  */
 
 public class LineChart extends View {
-
-    int _GridLines=5;
-
 
 
     List<Integer> _Colors =new ArrayList<>();
@@ -33,10 +36,15 @@ public class LineChart extends View {
 
     public LineChart(Context context) {
         super(context);
+        setWillNotDraw(false);
+
     }
 
-    public LineChart(Context context, AttributeSet attrs) {
+    public LineChart(Context context, AttributeSet attrs)
+    {
         super(context, attrs);
+        setWillNotDraw(false);
+
     }
 
 
@@ -59,20 +67,40 @@ public class LineChart extends View {
 
     static class DrawChartContext  {
         Canvas canvas;
+        float _originalDataLimits[];
         float dataLimits[];
         float marginLeft=10;
         float marginRight=10;
         float marginTop=10;
         float marginBottom=100;
-
+        float chartWidth;
+        float chartHeight;
         float scaleX;
         float scaleY;
 
+        int gridLines=10;
         public DrawChartContext(Canvas pCanvas, float[] pDatalimits) {
             canvas=pCanvas;
-            dataLimits=pDatalimits;
-            scaleX = (canvas.getWidth() -marginLeft-marginRight) / (dataLimits[2]-dataLimits[0]);
-            scaleY = (canvas.getHeight() -marginTop-marginBottom) / (dataLimits[3]-dataLimits[1]);
+            _originalDataLimits=pDatalimits;
+            dataLimits=_originalDataLimits.clone();
+
+            refresh();
+        }
+
+        protected void refresh() {
+            chartWidth=canvas.getWidth() -marginLeft-marginRight;
+            chartHeight=canvas.getHeight() -marginTop-marginBottom;
+            scaleX = chartWidth / (dataLimits[2]-dataLimits[0]);
+            scaleY = chartHeight / (dataLimits[3]-dataLimits[1]);
+        }
+        public void moveByPoints(float pX, float pY) {
+            float vValueX = pX / scaleX;
+            dataLimits[0] += vValueX;
+            dataLimits[2] += vValueX;
+
+            float vValueY = pY / scaleY;
+            dataLimits[1] += vValueY;
+            dataLimits[3] += vValueY;
         }
 
         public float getPointForValueX(float pValueX) {
@@ -89,6 +117,40 @@ public class LineChart extends View {
 
         public float getValueForPointY(float pValueY) {
             return (canvas.getHeight()-marginBottom-pValueY)/scaleY+dataLimits[1];
+        }
+
+        public boolean isValueInRange(float pValueX, float pValueY) {
+            return pValueX >= dataLimits[0] && pValueX<= dataLimits[2]
+                    && pValueY >= dataLimits[1] && pValueY <= dataLimits[3];
+        }
+
+
+        float[] _DataLimitsToScale;
+
+        float _ScalingFactor;
+        float _ScalingFocusValueX;
+        float _ScalingFocusValueY;
+        float _ScalingGridLines;
+        public void beginScale(float pScalingFocusX, float pScalingFocusY) {
+            _DataLimitsToScale=dataLimits.clone();
+            _ScalingFactor=1f;
+            _ScalingFocusValueX=getValueForPointX(pScalingFocusX);
+            _ScalingFocusValueY=getValueForPointY(pScalingFocusY);
+            _ScalingGridLines=gridLines;
+        }
+
+        public void scaleBy(float pFocusX, float pFocusY, float pFactor) {
+
+            _ScalingFactor *=pFactor;
+            gridLines = Math.round(_ScalingGridLines/_ScalingFactor);
+            float vSizeX = (_DataLimitsToScale[2]-_DataLimitsToScale[0])/_ScalingFactor;
+            float vSizeY = (_DataLimitsToScale[3]-_DataLimitsToScale[1])/_ScalingFactor;
+
+            dataLimits[0]= _ScalingFocusValueX - vSizeX/2;
+            dataLimits[1]= _ScalingFocusValueY - vSizeY/2;
+            dataLimits[2]= _ScalingFocusValueX + vSizeX/2;
+            dataLimits[3]= _ScalingFocusValueY + vSizeY/2;
+            refresh();
         }
     }
 
@@ -125,13 +187,24 @@ public class LineChart extends View {
         return vLimits;
     }
 
+    DrawChartContext _DrawChartContext;
+
     @Override
     protected void onDraw(Canvas pCanvas) {
-        DrawChartContext vDrawChartContext =new DrawChartContext(pCanvas,getDataLimits());
 
-        drawGrid(vDrawChartContext);
-        drawAxes(vDrawChartContext);
-        drawDataLines(vDrawChartContext);
+
+        if (_Data.size()==0) {
+            return;
+        }
+
+        if (_DrawChartContext==null) {
+            _DrawChartContext = new DrawChartContext(pCanvas, getDataLimits());
+        }
+
+        //pCanvas.drawColor( new Random().nextInt(0xFFFFFF) |0xFF000000);
+        drawGrid(_DrawChartContext);
+        drawAxes(_DrawChartContext);
+        drawDataLines(_DrawChartContext);
 
     }
 
@@ -142,16 +215,23 @@ public class LineChart extends View {
             DataSet2D vCurSeries = _Data.get(vCntSeries);
 
             Path  vCurPath= new Path();
+            boolean vFirstPoint=true;
             for (int vCntPoints=0 ;vCntPoints < vCurSeries.count();vCntPoints++){
                 float vCurX = pContext.getPointForValueX(vCurSeries.getAxisX().getItemAt(vCntPoints));
                 float vCurY =  pContext.getPointForValueY(vCurSeries.getAxisY().getItemAt(vCntPoints));
 
-                if (vCntPoints>0) {
+
+                if (!pContext.isValueInRange(vCurSeries.getAxisX().getItemAt(vCntPoints), vCurSeries.getAxisY().getItemAt(vCntPoints))) {
+                    continue;
+                }
+
+                if (vFirstPoint==false) {
                     vCurPath.lineTo(vCurX,vCurY);
                 }
 
                 vCurPath.addCircle(vCurX,vCurY,10, Path.Direction.CW);
                 vCurPath.moveTo(vCurX,vCurY);
+                vFirstPoint=false;
             }
 
             Paint vCurPaint =new Paint();
@@ -189,11 +269,11 @@ public class LineChart extends View {
         int vYLines;
         int vXLines;
         if (vYFactor >= 1) {
-            vXLines = _GridLines;
+            vXLines = pContext.gridLines;
             vYLines =  Math.round(vXLines * vYFactor);
         } else {
-            vYLines = _GridLines;
-            vXLines = Math.round(_GridLines / vYFactor);
+            vYLines =  pContext.gridLines;
+            vXLines = Math.round( pContext.gridLines / vYFactor);
         }
 
         Paint vCurPaint = new Paint();
@@ -242,15 +322,60 @@ public class LineChart extends View {
 
     }
 
-    float _SelectedX=Float.NaN;
-    float _SelectedY=Float.NaN;
+    TouchEventHelper _TouchEventHelper;
+
     @Override
     public boolean onTouchEvent(MotionEvent pEvent) {
 
-        _SelectedX = pEvent.getX();
-        _SelectedY = pEvent.getY();
 
-        invalidate();
+
+        if (_TouchEventHelper==null) {
+            _TouchEventHelper = new TouchEventHelper(this);
+
+            _TouchEventHelper.setContinuousMoveListener(new TouchEventHelper.MoveListener() {
+                @Override
+                public void onMove(float pX, float pY) {
+
+
+                    if (LineChart.this._DrawChartContext !=null ){
+                        LineChart.this._DrawChartContext.moveByPoints(pX*-1,pY);
+                    }
+
+                    LineChart.this.requestLayout();
+                    LineChart.this.invalidate();
+
+                }
+            });
+
+            _TouchEventHelper.setOnScaleGestureListener(new OnScaleGestureListener() {
+                @Override
+                public boolean onScale(ScaleGestureDetector detector) {
+
+                    if (LineChart.this._DrawChartContext !=null ){
+                        LineChart.this._DrawChartContext.scaleBy(detector.getFocusX(),detector.getFocusY(),
+                                detector.getScaleFactor());
+                    }
+                    LineChart.this.requestLayout();
+                    LineChart.this.invalidate();
+                    return true;
+                }
+
+                @Override
+                public boolean onScaleBegin(ScaleGestureDetector detector) {
+                    if (LineChart.this._DrawChartContext !=null ){
+                        LineChart.this._DrawChartContext.beginScale(detector.getFocusX(),detector.getFocusY());
+                    }
+                    return true;
+                }
+
+                @Override
+                public void onScaleEnd(ScaleGestureDetector detector) {
+
+                }
+            });
+        }
+
+        _TouchEventHelper.processEvent(pEvent);
         return true;
 
     }

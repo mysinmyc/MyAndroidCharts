@@ -21,19 +21,19 @@ public class LineChartActivity extends AppCompatActivity {
 
         DataSet2D vData = new DataSet2D();
 
-        for (float vCnt=-2;vCnt<10;vCnt++) {
-            vData.add(vCnt*10,vCnt*10);
+        for (float vCnt=-10;vCnt<10;vCnt+=1) {
+            vData.add(vCnt, vCnt*vCnt*vCnt);
         }
         vLineChart.addDataSerie(Color.BLUE,"ciao",vData);
-/*
+
         DataSet2D vData2 = new DataSet2D();
 
-        for (float vCnt=10;vCnt<100;vCnt++) {
-            //vData2.add(vCnt,0f+vCnt *vCnt);
-            vData2.add(vCnt,10f+vCnt);
+        for (float vCnt=-20;vCnt<20;vCnt+=1) {
+            vData2.add(vCnt,0f+vCnt *vCnt);
+            //vData2.add(vCnt,10f+vCnt);
         }
         vLineChart.addDataSerie(Color.RED,"miao",vData2);
-*/
+
         vLineChart.setAxisXDataLabelFunction(new DataLabel() {
             @Override
             public String getLabelFor(float pValue) {
