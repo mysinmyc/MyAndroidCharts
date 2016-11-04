@@ -84,10 +84,21 @@ public class TouchEventHelper implements ScaleGestureDetector.OnScaleGestureList
         _MoveListener = pMoveListener;
     }
 
+
+    public interface ClickListener {
+        void onClick(float pX, float pY);
+    }
+
+    ClickListener _ClickListener;
+
+    public void setClickListener(ClickListener pClickListener) {
+        _ClickListener=pClickListener;
+    }
+
+
     float _StartX=Float.NaN;
     float _StartY=Float.NaN;
     boolean _Down=false;
-
     long _LastMoveTime = System.currentTimeMillis();
 
 
@@ -95,6 +106,7 @@ public class TouchEventHelper implements ScaleGestureDetector.OnScaleGestureList
 
         _ScaleGestureDetector.onTouchEvent(pEvent);
         if (_ScaleGestureDetector.isInProgress()) {
+            _Down=false;
             return;
         }
         switch (pEvent.getAction()) {
@@ -107,8 +119,16 @@ public class TouchEventHelper implements ScaleGestureDetector.OnScaleGestureList
 
             case MotionEvent.ACTION_UP:
                 _Down=false;
-                if (_MoveListener != null) {
-                    _MoveListener.onMove(pEvent.getX()-_StartX, pEvent.getY()-_StartY);
+
+
+                if (pEvent.getX() ==_StartX && pEvent.getY()==_StartY) {
+                    if (_ClickListener != null) {
+                        _ClickListener.onClick(pEvent.getX(), pEvent.getY());
+                    }
+                } else {
+                    if (_MoveListener != null) {
+                        _MoveListener.onMove(pEvent.getX()-_StartX, pEvent.getY()-_StartY);
+                    }
                 }
                 break;
 
@@ -125,11 +145,14 @@ public class TouchEventHelper implements ScaleGestureDetector.OnScaleGestureList
                     return;
                 }
                 _LastMoveTime=vNow;
+
                 if (_ContinuousMoveListener!=null) {
                     _ContinuousMoveListener.onMove(pEvent.getX()-_StartX, pEvent.getY()-_StartY);
                     _StartX=pEvent.getX();
                     _StartY=pEvent.getY();
                 }
+
+
                 break;
 
         }
