@@ -92,8 +92,10 @@ public class LineChart extends RelativeLayout {
         _Colors.clear();
         _Labels.clear();
         _Data.clear();
+        _SelectedValue=null;
         refresh();
     }
+
 
     static class DrawChartContext  {
         Canvas canvas;
@@ -102,22 +104,29 @@ public class LineChart extends RelativeLayout {
         float marginLeft=10;
         float marginRight=10;
         float marginTop=10;
-        float marginBottom=100;
+        float marginBottom=30;
         float chartWidth;
         float chartHeight;
         float scaleX;
         float scaleY;
 
 
-        public static final int DEFAULT_GRIDLINES=10;
+
+
+        public static final int DEFAULT_GRIDLINES=5;
         public static final int DEFAULT_GRIDLINES_MAX=20;
 
+        public static final float DATA_MARGIN=0.2f;
         int gridLines=DEFAULT_GRIDLINES;
 
 
         public DrawChartContext(Canvas pCanvas, float[] pDatalimits) {
             canvas=pCanvas;
-            _originalDataLimits=pDatalimits;
+
+
+            float vDataMarginX=(pDatalimits[2]-pDatalimits[0])*DATA_MARGIN;
+            float vDataMarginY=(pDatalimits[3]-pDatalimits[1])*DATA_MARGIN;
+            _originalDataLimits=new float[]{pDatalimits[0]-vDataMarginX,pDatalimits[1]-vDataMarginY,pDatalimits[2]+vDataMarginX,pDatalimits[3]+vDataMarginY};
             dataLimits=_originalDataLimits.clone();
 
             refresh();
@@ -187,7 +196,7 @@ public class LineChart extends RelativeLayout {
         public void scaleBy(float pFocusX, float pFocusY, float pFactor) {
 
             _ScalingFactor *=pFactor;
-            gridLines = Math.round(_ScalingGridLines/_ScalingFactor);
+            gridLines = ((Double)Math.ceil(_ScalingGridLines/_ScalingFactor)).intValue();
             if (gridLines> DEFAULT_GRIDLINES_MAX) {
                 gridLines= DEFAULT_GRIDLINES_MAX;;
             }
@@ -320,16 +329,16 @@ public class LineChart extends RelativeLayout {
                 float vCurX = pContext.getPointForValueX(vCurSeries.getAxisX().getItemAt(vCntPoints));
                 float vCurY =  pContext.getPointForValueY(vCurSeries.getAxisY().getItemAt(vCntPoints));
 
-
+/*
                 if (!pContext.isValueInRange(vCurSeries.getAxisX().getItemAt(vCntPoints), vCurSeries.getAxisY().getItemAt(vCntPoints))) {
                     continue;
                 }
-
+*/
                 if (vFirstPoint==false) {
                     vCurPath.lineTo(vCurX,vCurY);
                 }
 
-                vCurPath.addCircle(vCurX,vCurY,10, Path.Direction.CW);
+                vCurPath.addCircle(vCurX,vCurY,5, Path.Direction.CW);
                 vCurPath.moveTo(vCurX,vCurY);
                 vFirstPoint=false;
             }
@@ -387,10 +396,10 @@ public class LineChart extends RelativeLayout {
         int vXLines;
         if (vYFactor >= 1) {
             vXLines = pContext.gridLines;
-            vYLines =  Math.round(vXLines * vYFactor);
+            vYLines =  ((Double)Math.ceil(vXLines * vYFactor)).intValue();
         } else {
             vYLines =  pContext.gridLines;
-            vXLines = Math.round( pContext.gridLines / vYFactor);
+            vXLines = ((Double) Math.ceil( pContext.gridLines / vYFactor)).intValue();
         }
 
 
@@ -401,6 +410,8 @@ public class LineChart extends RelativeLayout {
         float vAxisX=pContext.getPointForValueY(pContext.dataLimits[1] < 0 ? 0:pContext.dataLimits[1]);
         int vNextXLabel=0;
 
+
+        String vPreviousLabelX="";
         for (int vCntX = 0; vCntX < vXLines; vCntX++) {
 
             float vCurPointX= pContext.marginLeft+vCntX*vXSize;
@@ -411,15 +422,21 @@ public class LineChart extends RelativeLayout {
                 pContext.canvas.drawLine(vCurPointX, pContext.marginTop, vCurPointX, pContext.canvas.getHeight() - pContext.marginBottom, _PaintGrid);
             }
 
-            if (_ShowAxes && Math.round(vCurValueX)!=0 && vCntX > vNextXLabel) {
+            if (_ShowAxes && Math.ceil(vCurValueX)!=0 && vCntX > vNextXLabel) {
 
-                pContext.canvas.drawLine(vCurPointX,vAxisX,vCurPointX,vAxisX-10,_PaintAxes);
                 String vCurText = _AxisXDataLabelFunction == null
-                        ? "" + Math.round(vCurValueX)
+                        ? "" + Math.ceil(vCurValueX)
                         : _AxisXDataLabelFunction.getLabelFor(vCurValueX);
+
+                if (vCurText.equals(vPreviousLabelX)) {
+                  //  continue;
+                }
+                vPreviousLabelX=vCurText;
+                pContext.canvas.drawLine(vCurPointX,vAxisX,vCurPointX,vAxisX-10,_PaintAxes);
+
                 _PaintGrid.getTextBounds(vCurText, 0, vCurText.length(), vBounds);
 
-                vNextXLabel = vCntX + vBounds.width()  / Math.round(vXSize);
+                vNextXLabel = vCntX + vBounds.width()  / ((Double)Math.ceil(vXSize)).intValue();
 
                 pContext.canvas.drawText(vCurText, vCurPointX- vBounds.width()/2, (pContext.dataLimits[1] < 0
                         ? pContext.getPointForValueY(0) + 26 :
@@ -432,7 +449,9 @@ public class LineChart extends RelativeLayout {
 
         float vAxisY=pContext.getPointForValueX(pContext.dataLimits[0] < 0 ? 0:pContext.dataLimits[0]);
         _PaintGrid.getTextBounds("Z",0,1,vBounds);
-        for (int vCntY = 0; vCntY < vYLines; vCntY++) {
+
+        String vPreviousLabelY="";
+        for (int vCntY = vYLines-1; vCntY >-1; vCntY--) {
 
             float vCurPointY= pContext.marginLeft+vCntY+vYSize*vCntY;
             float vCurValueY=pContext.getValueForPointY(vCurPointY);
@@ -441,16 +460,21 @@ public class LineChart extends RelativeLayout {
                 pContext.canvas.drawLine(pContext.marginLeft, vCurPointY, pContext.canvas.getWidth() - pContext.marginRight, vCurPointY, _PaintGrid);
             }
 
-            if (_ShowAxes && Math.round(vCurValueY)!=0 && vCntY > vNextYLabel) {
+            //if (_ShowAxes && Math.ceil(vCurValueY)!=0 && vCntY > vNextYLabel) {
+            if (_ShowAxes && Math.ceil(vCurValueY)!=0) {
 
-
-                pContext.canvas.drawLine(vAxisY,vCurPointY,vAxisY+10,vCurPointY,_PaintAxes);
                 String vCurText=_AxisYDataLabelFunction == null
-                        ? "" + Math.round(vCurValueY)
+                        ? "" + Math.ceil(vCurValueY)
                         : _AxisYDataLabelFunction.getLabelFor(vCurValueY);
 
+                if (vCurText.equals(vPreviousLabelY)) {
+                    continue;
+                }
+                vPreviousLabelY=vCurText;
 
-                vNextYLabel = vCntY+ (vBounds.height()+10) / Math.round(vYSize);
+                pContext.canvas.drawLine(vAxisY,vCurPointY,vAxisY+10,vCurPointY,_PaintAxes);
+
+                vNextYLabel = vCntY- (vBounds.height()+10) / ((Double)Math.ceil(vYSize)).intValue();
 
                 pContext.canvas.drawText(vCurText,
                         ( pContext.dataLimits[0] < 0? pContext.getPointForValueX(0):0+pContext.marginLeft) + 14, pContext.marginTop+vCurPointY, _PaintGrid);
@@ -562,12 +586,14 @@ public class LineChart extends RelativeLayout {
 
             if (_SelectedValue==null) {
                 vDataValueText.setText("");
+                vDataValueText.setVisibility(GONE);
             } else {
+                vDataValueText.setVisibility(VISIBLE);
                 vDataValueText.setText(
 
-                        (_AxisXDataLabelFunction == null ? "" + Math.round(_SelectedValue[0]) : _AxisXDataLabelFunction.getLabelFor(_SelectedValue[0]))
-                                + " " +
-                                (_AxisYDataLabelFunction == null ? "" + Math.round(_SelectedValue[1]) : _AxisYDataLabelFunction.getLabelFor(_SelectedValue[1]))
+                        (_AxisXDataLabelFunction == null ? "" + Math.ceil(_SelectedValue[0]) : _AxisXDataLabelFunction.getLabelFor(_SelectedValue[0]))
+                                + ": " +
+                                (_AxisYDataLabelFunction == null ? "" + Math.ceil(_SelectedValue[1]) : _AxisYDataLabelFunction.getLabelFor(_SelectedValue[1]))
                 );
             }
         }

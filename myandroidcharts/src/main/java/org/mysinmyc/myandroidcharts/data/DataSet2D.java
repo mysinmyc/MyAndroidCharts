@@ -89,7 +89,7 @@ public class DataSet2D {
      * @param pY = Y value to search for
      * @param pDistanceMaxX = max distance of X value
      * @param pDistanceMaxY = max distance of Y value
-     * @return [x,y] of the first value in the range specified  pX-pDistanceMaxX -> point -> pX+pDistanceX, pY-pDistanceMaxY -> point -> pY+pDistanceY. NULL if not found
+     * @return [x,y,distance(deltax*deltay)] of the first value in the range specified  pX-pDistanceMaxX -> point -> pX+pDistanceX, pY-pDistanceMaxY -> point -> pY+pDistanceY. NULL if not found
      */
     public float[] getFirstValueNearThan(float pX, float pY, float pDistanceMaxX,float  pDistanceMaxY) {
 
@@ -97,17 +97,27 @@ public class DataSet2D {
 
         for (int vCnt=0;vCnt< _AxisX.count();vCnt++){
             float vCurX = _AxisX.getItemAt(vCnt);
-            if (Math.abs(vCurX-pX) >pDistanceMaxX) {
+
+            float vDistanceX=Math.abs(vCurX-pX);
+            if (vDistanceX >pDistanceMaxX) {
                 continue;
             }
+
 
             float vCurY = _AxisY.getItemAt(vCnt);
-            if (Math.abs(vCurY-pY) >pDistanceMaxY) {
+            float vDistanceY=Math.abs(vCurY-pY);
+            if (vDistanceY >pDistanceMaxY) {
                 continue;
             }
 
-            vRis= new float[]{vCurX,vCurY};
-            break;
+            float  vDistance=vDistanceX*vDistanceY;
+            if (vRis!=null) {
+                if (vDistance> vRis[2]) {
+                    continue;
+                }
+            }
+            vRis= new float[]{vCurX,vCurY,vDistance};
+
         }
 
         return vRis;
