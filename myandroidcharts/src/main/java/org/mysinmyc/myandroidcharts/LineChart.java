@@ -123,9 +123,8 @@ public class LineChart extends RelativeLayout {
         public DrawChartContext(Canvas pCanvas, float[] pDatalimits) {
             canvas=pCanvas;
 
-
-            float vDataMarginX=(pDatalimits[2]-pDatalimits[0])*DATA_MARGIN;
-            float vDataMarginY=(pDatalimits[3]-pDatalimits[1])*DATA_MARGIN;
+            float vDataMarginX= pDatalimits[2]==pDatalimits[0] ? 1 : (pDatalimits[2]-pDatalimits[0])*DATA_MARGIN;
+            float vDataMarginY= pDatalimits[3]==pDatalimits[1]  ? 1: (pDatalimits[3]-pDatalimits[1])*DATA_MARGIN;
             _originalDataLimits=new float[]{pDatalimits[0]-vDataMarginX,pDatalimits[1]-vDataMarginY,pDatalimits[2]+vDataMarginX,pDatalimits[3]+vDataMarginY};
             dataLimits=_originalDataLimits.clone();
 
@@ -186,16 +185,21 @@ public class LineChart extends RelativeLayout {
         float _ScalingGridLines;
 
         public void beginScale(float pScalingFocusX, float pScalingFocusY) {
-            _DataLimitsToScale=dataLimits.clone();
+            _DataLimitsToScale=_originalDataLimits.clone();
             _ScalingFactor=1f;
             _ScalingFocusValueX=getValueForPointX(pScalingFocusX);
             _ScalingFocusValueY=getValueForPointY(pScalingFocusY);
-            _ScalingGridLines=gridLines;
+            _ScalingGridLines=DEFAULT_GRIDLINES;
         }
 
         public void scaleBy(float pFocusX, float pFocusY, float pFactor) {
+            setScale(pFocusX,pFocusY,_ScalingFactor * pFactor);
+        }
 
-            _ScalingFactor *=pFactor;
+        public void setScale(float pFocusX, float pFocusY, float pFactor) {
+
+
+            _ScalingFactor =pFactor;
             gridLines = ((Double)Math.ceil(_ScalingGridLines/_ScalingFactor)).intValue();
             if (gridLines> DEFAULT_GRIDLINES_MAX) {
                 gridLines= DEFAULT_GRIDLINES_MAX;;
@@ -425,7 +429,7 @@ public class LineChart extends RelativeLayout {
             if (_ShowAxes && Math.ceil(vCurValueX)!=0 && vCntX > vNextXLabel) {
 
                 String vCurText = _AxisXDataLabelFunction == null
-                        ? "" + Math.ceil(vCurValueX)
+                        ? "" + Math.ceil(vCurValueX*10)/10
                         : _AxisXDataLabelFunction.getLabelFor(vCurValueX);
 
                 if (vCurText.equals(vPreviousLabelX)) {
@@ -464,7 +468,7 @@ public class LineChart extends RelativeLayout {
             if (_ShowAxes && Math.ceil(vCurValueY)!=0) {
 
                 String vCurText=_AxisYDataLabelFunction == null
-                        ? "" + Math.ceil(vCurValueY)
+                        ? "" + Math.ceil(vCurValueY*10)/10
                         : _AxisYDataLabelFunction.getLabelFor(vCurValueY);
 
                 if (vCurText.equals(vPreviousLabelY)) {
@@ -507,6 +511,18 @@ public class LineChart extends RelativeLayout {
                 }
             });
 
+            _TouchEventHelper.setTapListener(new TouchEventHelper.TapListener() {
+                @Override
+                public void onDoubleTap(float pX, float pY) {
+                    if (LineChart.this._DrawChartContext !=null ){
+
+                        float vOldFactor=LineChart.this._DrawChartContext._ScalingFactor;
+                        LineChart.this._DrawChartContext.beginScale(pX,pY);
+                        LineChart.this._DrawChartContext.setScale(pX,pY,vOldFactor == 1?4:1);
+                        LineChart.this.refresh();
+                    }
+                }
+            });
             _TouchEventHelper.setOnScaleGestureListener(new OnScaleGestureListener() {
                 @Override
                 public boolean onScale(ScaleGestureDetector detector) {
@@ -559,7 +575,7 @@ public class LineChart extends RelativeLayout {
         _AllowSelectValue =pAllowSelectValue;
     }
 
-    float[] _SelectedValue;
+    SelectedValue _SelectedValue;
 
     public static final int CLICK_SIZE=50;
 
@@ -590,10 +606,10 @@ public class LineChart extends RelativeLayout {
             } else {
                 vDataValueText.setVisibility(VISIBLE);
                 vDataValueText.setText(
-
-                        (_AxisXDataLabelFunction == null ? "" + Math.ceil(_SelectedValue[0]) : _AxisXDataLabelFunction.getLabelFor(_SelectedValue[0]))
+                        _SelectedValue.label+" "+
+                        ( _AxisXDataLabelFunction == null ? "" + Math.ceil(_SelectedValue.x) : _AxisXDataLabelFunction.getLabelFor(_SelectedValue.x))
                                 + ": " +
-                                (_AxisYDataLabelFunction == null ? "" + Math.ceil(_SelectedValue[1]) : _AxisYDataLabelFunction.getLabelFor(_SelectedValue[1]))
+                                (_AxisYDataLabelFunction == null ? "" + Math.ceil(_SelectedValue.y) : _AxisYDataLabelFunction.getLabelFor(_SelectedValue.y))
                 );
             }
         }
@@ -608,24 +624,48 @@ public class LineChart extends RelativeLayout {
             return;
         }
 
-        float vSelectedValueX= pContext.getPointForValueX(_SelectedValue[0]);
-        float vSelectedValueY= pContext.getPointForValueY(_SelectedValue[1]);
+        float vSelectedValueX= pContext.getPointForValueX(_SelectedValue.x);
+        float vSelectedValueY= pContext.getPointForValueY(_SelectedValue.y);
 
         pContext.canvas.drawLine(vSelectedValueX,pContext.marginTop,vSelectedValueX,pContext.canvas.getHeight()-pContext.marginBottom,_PaintSelectedValue);
         pContext.canvas.drawLine(pContext.marginLeft,vSelectedValueY,pContext.canvas.getWidth()-pContext.marginRight,vSelectedValueY,_PaintSelectedValue);
 
     }
 
-    protected float[] getFirstValueNearThan(float pX, float pY, float pDistanceMaxX,float pDistanceMaxY) {
+    static class SelectedValue {
+        float x;
+        float y;
+        float distance;
+        DataSet2D dataset;
+        String label;
+        int color;
+    }
 
-        for (DataSet2D vCurDataSet : _Data) {
-            float [] vRis = vCurDataSet.getFirstValueNearThan(pX,pY,pDistanceMaxX, pDistanceMaxY);
+    protected SelectedValue getFirstValueNearThan(float pX, float pY, float pDistanceMaxX,float pDistanceMaxY) {
 
-            if (vRis!=null) {
-                return vRis;
+        SelectedValue vRis=null;
+        for (int vCnt=0;vCnt<_Data.size();vCnt++) {
+            DataSet2D vCurDataSet = _Data.get(vCnt);
+            float [] vCur = vCurDataSet.getFirstValueNearThan(pX,pY,pDistanceMaxX, pDistanceMaxY);
+
+            if (vCur==null) {
+                continue;
             }
+
+            if (vRis!=null&& vCur[2] > vRis.distance) {
+                    continue;
+            }
+            vRis = new SelectedValue();
+            vRis.x = vCur[0];
+            vRis.y= vCur[1];
+            vRis.distance = vCur[2];
+            vRis.dataset = vCurDataSet;
+            vRis.label = _Labels.get(vCnt);
+            vRis.color=_Colors.get(vCnt);
+
+
         }
 
-        return null;
+        return vRis;
     }
 }
