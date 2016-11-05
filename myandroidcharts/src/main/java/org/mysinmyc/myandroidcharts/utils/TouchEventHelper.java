@@ -1,6 +1,9 @@
 package org.mysinmyc.myandroidcharts.utils;
 
+import android.os.Build;
 import android.provider.Settings;
+import android.view.GestureDetector;
+import android.view.GestureDetector.SimpleOnGestureListener;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -17,10 +20,25 @@ public class TouchEventHelper implements ScaleGestureDetector.OnScaleGestureList
     float _SelectedY=Float.NaN;
 
     View _Parent;
+    GestureDetector _GestureDetector;
     ScaleGestureDetector _ScaleGestureDetector;
+
     public TouchEventHelper(View pParent) {
         _Parent=pParent;
+        _GestureDetector = new GestureDetector(_Parent.getContext(), new  GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onDoubleTap(MotionEvent e) {
+
+                if (_TapListener!=null) {
+                    _TapListener.onDoubleTap(e.getX(),e.getY());
+                }
+                return true;
+            }
+
+
+        });
         _ScaleGestureDetector=new ScaleGestureDetector(_Parent.getContext(),this);
+
     }
 
     ScaleGestureDetector.OnScaleGestureListener _OnScaleGestureListener;
@@ -67,6 +85,15 @@ public class TouchEventHelper implements ScaleGestureDetector.OnScaleGestureList
         }
     }
 
+    public interface TapListener {
+        void onDoubleTap(float pX, float pY);
+    }
+
+    TapListener _TapListener;
+
+    public void setTapListener(TapListener pTapListener) {
+        _TapListener=pTapListener;
+    }
 
     public interface MoveListener {
         void onMove(float pX, float pY);
@@ -103,7 +130,9 @@ public class TouchEventHelper implements ScaleGestureDetector.OnScaleGestureList
 
 
     public void processEvent(MotionEvent pEvent) {
-
+        if (_GestureDetector.onTouchEvent(pEvent)) {
+            return;
+        }
         _ScaleGestureDetector.onTouchEvent(pEvent);
         if (_ScaleGestureDetector.isInProgress()) {
             _Down=false;
