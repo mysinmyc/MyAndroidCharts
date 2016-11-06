@@ -93,6 +93,12 @@ public class LineChart extends RelativeLayout {
         _Labels.clear();
         _Data.clear();
         _SelectedValue=null;
+
+        View vDataLabelTag=MyViewUtils.getChildByTag(this, DATALABEL_TAG);
+
+        if (vDataLabelTag!=null) {
+            vDataLabelTag.setVisibility(GONE);
+        }
         refresh();
     }
 
@@ -433,7 +439,7 @@ public class LineChart extends RelativeLayout {
                         : _AxisXDataLabelFunction.getLabelFor(vCurValueX);
 
                 if (vCurText.equals(vPreviousLabelX)) {
-                  //  continue;
+                  continue;
                 }
                 vPreviousLabelX=vCurText;
                 pContext.canvas.drawLine(vCurPointX,vAxisX,vCurPointX,vAxisX-10,_PaintAxes);
@@ -594,9 +600,11 @@ public class LineChart extends RelativeLayout {
 
         _SelectedValue = getFirstValueNearThan(vCurValueX,vCurValueY,_DrawChartContext.pixelToValueX(CLICK_SIZE),_DrawChartContext.pixelToValueY(CLICK_SIZE));
 
-
-
-        TextView vDataValueText= (TextView) MyViewUtils.getChildByTag(LineChart.this, DATALABEL_TAG);
+        TextView vDataValueText=null;
+        View vDataValueView =MyViewUtils.getChildByTag(LineChart.this, DATALABEL_TAG);
+        if (vDataValueView != null && vDataValueView instanceof  TextView) {
+            vDataValueText = (TextView) vDataValueView;
+        }
 
         if (vDataValueText!=null) {
 
