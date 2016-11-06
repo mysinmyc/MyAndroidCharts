@@ -418,9 +418,9 @@ public class LineChart extends RelativeLayout {
 
         float vXSize = (pContext.canvas.getWidth() - pContext.marginLeft-pContext.marginRight) / vXLines;
         float vAxisX=pContext.getPointForValueY(pContext.dataLimits[1] < 0 ? 0:pContext.dataLimits[1]);
-        int vNextXLabel=0;
 
 
+        int vNextXLabel=-1;
         String vPreviousLabelX="";
         for (int vCntX = 0; vCntX < vXLines; vCntX++) {
 
@@ -432,14 +432,14 @@ public class LineChart extends RelativeLayout {
                 pContext.canvas.drawLine(vCurPointX, pContext.marginTop, vCurPointX, pContext.canvas.getHeight() - pContext.marginBottom, _PaintGrid);
             }
 
-            if (_ShowAxes && Math.ceil(vCurValueX)!=0 && vCntX > vNextXLabel) {
+            if (_ShowAxes && vCntX > vNextXLabel) {
 
                 String vCurText = _AxisXDataLabelFunction == null
                         ? "" + Math.ceil(vCurValueX*10)/10
                         : _AxisXDataLabelFunction.getLabelFor(vCurValueX);
 
                 if (vCurText.equals(vPreviousLabelX)) {
-                  continue;
+                    continue;
                 }
                 vPreviousLabelX=vCurText;
                 pContext.canvas.drawLine(vCurPointX,vAxisX,vCurPointX,vAxisX-10,_PaintAxes);
@@ -615,7 +615,7 @@ public class LineChart extends RelativeLayout {
                 vDataValueText.setVisibility(VISIBLE);
                 vDataValueText.setText(
                         _SelectedValue.label+" "+
-                        ( _AxisXDataLabelFunction == null ? "" + Math.ceil(_SelectedValue.x) : _AxisXDataLabelFunction.getLabelFor(_SelectedValue.x))
+                                ( _AxisXDataLabelFunction == null ? "" + Math.ceil(_SelectedValue.x) : _AxisXDataLabelFunction.getLabelFor(_SelectedValue.x))
                                 + ": " +
                                 (_AxisYDataLabelFunction == null ? "" + Math.ceil(_SelectedValue.y) : _AxisYDataLabelFunction.getLabelFor(_SelectedValue.y))
                 );
@@ -661,7 +661,7 @@ public class LineChart extends RelativeLayout {
             }
 
             if (vRis!=null&& vCur[2] > vRis.distance) {
-                    continue;
+                continue;
             }
             vRis = new SelectedValue();
             vRis.x = vCur[0];
