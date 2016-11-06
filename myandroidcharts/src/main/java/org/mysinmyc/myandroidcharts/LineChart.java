@@ -129,8 +129,8 @@ public class LineChart extends RelativeLayout {
         public DrawChartContext(Canvas pCanvas, float[] pDatalimits) {
             canvas=pCanvas;
 
-            float vDataMarginX= pDatalimits[2]==pDatalimits[0] ? 1 : (pDatalimits[2]-pDatalimits[0])*DATA_MARGIN;
-            float vDataMarginY= pDatalimits[3]==pDatalimits[1]  ? 1: (pDatalimits[3]-pDatalimits[1])*DATA_MARGIN;
+            float vDataMarginX= (pDatalimits[2]==pDatalimits[0] ? 1f : (pDatalimits[2]-pDatalimits[0]))*DATA_MARGIN;
+            float vDataMarginY= (pDatalimits[3]==pDatalimits[1]  ? 1f: (pDatalimits[3]-pDatalimits[1]))*DATA_MARGIN;
             _originalDataLimits=new float[]{pDatalimits[0]-vDataMarginX,pDatalimits[1]-vDataMarginY,pDatalimits[2]+vDataMarginX,pDatalimits[3]+vDataMarginY};
             dataLimits=_originalDataLimits.clone();
 
@@ -141,7 +141,14 @@ public class LineChart extends RelativeLayout {
             chartWidth=canvas.getWidth() -marginLeft-marginRight;
             chartHeight=canvas.getHeight() -marginTop-marginBottom;
             scaleX = chartWidth / (dataLimits[2]-dataLimits[0]);
+            if (Float.isInfinite(scaleX )) {
+                scaleX=1;
+            }
             scaleY = chartHeight / (dataLimits[3]-dataLimits[1]);
+            if (Float.isInfinite(scaleY)) {
+                scaleY=1;
+            }
+
         }
         public void moveByPoints(float pX, float pY) {
             float vValueX = pX / scaleX;
